@@ -18,7 +18,12 @@ void UUnicornCardGameManager::RemoveFromDrawPile(AUnicornCardActor* Card)
 }
 
 void UUnicornCardGameManager::AddToDiscardPile(AUnicornCardActor* Card)
-{
+{		
+	if (Card->GetCardInfo().CardType == ECardType::BabyUnicorn)
+	{
+		AddToNursery(Card);
+		return;
+	}
 	DiscardPile.Add(Card);
 	OnDiscardPileChanged.Broadcast(Card, false);
 }
@@ -43,6 +48,11 @@ void UUnicornCardGameManager::RemoveFromNursery(AUnicornCardActor* Card)
 
 void UUnicornCardGameManager::AddToPlayerHand(int32 PlayerIndex, AUnicornCardActor* Card)
 {	
+	if (Card->GetCardInfo().CardType == ECardType::BabyUnicorn)
+	{
+		AddToNursery(Card);
+		return;
+	}
 	PlayerBoards.Find(PlayerIndex)->Hand.Add(Card);
 	OnPlayerHandChanged.Broadcast(PlayerIndex, Card, false);
 	Card->OnEnterHand();
