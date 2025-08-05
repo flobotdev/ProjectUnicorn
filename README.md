@@ -23,7 +23,7 @@
 
 ## 🛠️ Technologies Used
 
-- **Unreal Engine 5** (or version you're using)
+- **Unreal Engine 5**
 - **C++**
 - **UMG (Unreal Motion Graphics)**
 - **Blueprints** for rapid prototyping
@@ -51,7 +51,7 @@ This project is provided for **educational purposes only**.
 
 ---
 
-## 🙋‍♂️ About the Developer
+## 🙋‍♀️ About the Developer
 
 Hi! I'm a game developer passionate about building interactive experiences with Unreal Engine. **Project Unicorn** is a portfolio piece to highlight my proficiency in game development with C++ and UI systems in Unreal.
 
