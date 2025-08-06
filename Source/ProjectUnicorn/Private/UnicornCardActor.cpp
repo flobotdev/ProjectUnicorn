@@ -3,9 +3,16 @@
 
 #include "UnicornCardActor.h"
 
+#include "UnicornCardGameManager.h"
+
 AUnicornCardActor::AUnicornCardActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
+}
+
+bool AUnicornCardActor::CanEnterStable_Implementation()
+{
+	return true;
 }
 
 void AUnicornCardActor::OnPlayedCard_Implementation()
@@ -22,19 +29,23 @@ void AUnicornCardActor::OnEnterHand_Implementation()
 
 bool AUnicornCardActor::OnBeginPhase_Implementation()
 {
+	CardManager->OnCardPhaseCompleted.Broadcast();
 	return true;
 }
 
 void AUnicornCardActor::OnDrawPhase_Implementation()
 {
+	CardManager->OnCardPhaseCompleted.Broadcast();
 }
 
 void AUnicornCardActor::OnActionPhase_Implementation()
 {
+	CardManager->OnCardPhaseCompleted.Broadcast();
 }
 
 bool AUnicornCardActor::OnEndPhase_Implementation()
 {
+	CardManager->OnCardPhaseCompleted.Broadcast();
 	return true;
 }
 

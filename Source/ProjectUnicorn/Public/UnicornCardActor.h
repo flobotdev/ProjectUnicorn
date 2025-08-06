@@ -7,6 +7,8 @@
 #include "GameFramework/Actor.h"
 #include "UnicornCardActor.generated.h"
 
+class UUnicornCardGameManager;
+
 UCLASS()
 class PROJECTUNICORN_API AUnicornCardActor : public AActor
 {
@@ -15,6 +17,8 @@ class PROJECTUNICORN_API AUnicornCardActor : public AActor
 public:
 	// Sets default values for this actor's properties
 	AUnicornCardActor();
+	void SetManager(UUnicornCardGameManager* Manager) { CardManager = Manager; }
+	void SetOwningPlayer(const int32 OwningPlayer) { CurrentOwningPlayer = OwningPlayer; }
 	UFUNCTION(BlueprintNativeEvent)
 	bool OnBeginPhase();
 	UFUNCTION(BlueprintNativeEvent)
@@ -35,6 +39,8 @@ public:
 	void OnEnterHand();
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnPlayedCard();
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	bool CanEnterStable();
 
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
@@ -49,6 +55,11 @@ protected:
 	bool bCanBeSacrificed = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Unicorn, meta = (AllowPrivateAccess = "true"))
 	bool bCanBeAffectedByMagic = true;
+	
+	UPROPERTY(BlueprintReadOnly, Category = Manager, meta = (AllowPrivateAccess = "true"))
+	UUnicornCardGameManager* CardManager = nullptr;
+	UPROPERTY(BlueprintReadOnly, Category = Manager, meta = (AllowPrivateAccess = "true"))
+	int32 CurrentOwningPlayer = -1;
 };
 
 

@@ -7,6 +7,11 @@
 
 void UUnicornCardGameManager::AddToDrawPile(AUnicornCardActor* Card)
 {
+	if (Card->GetCardInfo().CardType == ECardType::BabyUnicorn)
+	{
+		AddToNursery(Card);
+		return;
+	}
 	DrawPile.Add(Card);
 	OnDrawPileChanged.Broadcast(Card, false);
 }
@@ -53,19 +58,22 @@ void UUnicornCardGameManager::AddToPlayerHand(int32 PlayerIndex, AUnicornCardAct
 		AddToNursery(Card);
 		return;
 	}
-	PlayerBoards.Find(PlayerIndex)->Hand.Add(Card);
+	Card->SetOwningPlayer(PlayerIndex);
+	PlayerBoards.Find(PlayerIndex)->Hand.Add(Card);	
 	OnPlayerHandChanged.Broadcast(PlayerIndex, Card, false);
 	Card->OnEnterHand();
 }
 
 void UUnicornCardGameManager::RemoveFromPlayerHand(int32 PlayerIndex, AUnicornCardActor* Card)
 {
-	PlayerBoards.Find(PlayerIndex)->Hand.Remove(Card);
+	Card->SetOwningPlayer(-1);
+	PlayerBoards.Find(PlayerIndex)->Hand.Remove(Card);	
 	OnPlayerHandChanged.Broadcast(PlayerIndex, Card, true);
 }
 
 void UUnicornCardGameManager::AddToPlayerStable(int32 PlayerIndex, AUnicornCardActor* Card)
 {
+	Card->SetOwningPlayer(PlayerIndex);
 	if (Card->GetCardInfo().CardType >= ECardType::MagicalUnicorn)
 	{
 		PlayerBoards.Find(PlayerIndex)->StableUnicorns.Add(Card);
@@ -74,13 +82,14 @@ void UUnicornCardGameManager::AddToPlayerStable(int32 PlayerIndex, AUnicornCardA
 	{
 		PlayerBoards.Find(PlayerIndex)->StableEffects.Add(Card);
 	}
-	CopyOfStables.Add(Card);
+	CopyOfStables.AddUnique(Card);
 	OnPlayerStableChanged.Broadcast(PlayerIndex, Card, false);
 	Card->OnEnterStable();
 }
 
 void UUnicornCardGameManager::RemoveFromPlayerStable(int32 PlayerIndex, AUnicornCardActor* Card)
 {
+	Card->SetOwningPlayer(-1);
 	if (Card->GetCardInfo().CardType >= ECardType::MagicalUnicorn)
 	{
 		PlayerBoards.Find(PlayerIndex)->StableUnicorns.Remove(Card);
@@ -121,14 +130,9 @@ void UUnicornCardGameManager::NextPhase()
 		SetPhase(ETurnPhase::End);
 		break;
 	case End:
-		for (int32 i = 1; i <= UUnicornSettings::GetUnicornSettings()->NumberOfPlayers; i++)
+		if (CheckForWinCondition())
 		{
-			if (PlayerBoards.Find(i)->StableUnicorns.Num() >= 7)
-			{
-				//WIN
-				OnWinFinished.Broadcast(i);
-				return;
-			}
+			return;
 		}
 		if (PlayerBoards.Find(CurrentPlayerIndex)->Hand.Num() > UUnicornSettings::GetUnicornSettings()->NumberOfCardsMaxInHand)
 		{
@@ -178,6 +182,7 @@ void UUnicornCardGameManager::InitManager()
 				AUnicornCardActor* NewActor = PinnedVariablesOutliner.Get()->GetWorld()->SpawnActor<AUnicornCardActor>(Card->Card.LoadSynchronous());
 				if (NewActor != nullptr)
 				{
+					NewActor->SetManager(PinnedVariablesOutliner.Get());
 					if (NewActor->GetCardInfo().CardType == ECardType::BabyUnicorn)
 					{
 						PinnedVariablesOutliner->AddToNursery(NewActor);
@@ -214,8 +219,6 @@ void UUnicornCardGameManager::InitManager()
 		}
 		PinnedVariablesOutliner->SetPhase(ETurnPhase::Action);
 	}));
-	
-	OnEffectCard.AddUniqueDynamic(this, &UUnicornCardGameManager::OnEffectPlayed);
 }
 
 void UUnicornCardGameManager::ManualShuffle(TArray<AUnicornCardActor*>& Array, FRandomStream& Stream)
@@ -286,6 +289,10 @@ void UUnicornCardGameManager::ExecuteCardEffect(EEffectWord Effect, int32 Player
 	case None:
 		break;
 	case Sacrifice:// move a card from your stable to the discard pile
+		RemoveFromPlayerStable(PlayerIndex, Card);
+		AddToDiscardPile(Card);
+		//NextPhase();//should we do this here?
+		break;
 	case Destroy://Move a card from any other player's stable to the discard pile
 		RemoveFromPlayerStable(PlayerIndex, Card);
 		AddToDiscardPile(Card);
@@ -297,13 +304,33 @@ void UUnicornCardGameManager::ExecuteCardEffect(EEffectWord Effect, int32 Player
 	case Discard://Move a card from your hand to the discard pile
 		RemoveFromPlayerHand(PlayerIndex, Card);
 		AddToDiscardPile(Card);
-		NextPhase();//should we do this here?
+		//NextPhase();//should we do this here?
 		break;
 	case Revert://Move a card from any other player's stable into their hand
 		RemoveFromPlayerStable(PlayerIndex, Card);
 		AddToPlayerHand(PlayerIndex, Card);
 		break;
 	}
+	OnEffectEventExecuted.Broadcast(Effect, PlayerIndex, true);
+}
+
+void UUnicornCardGameManager::AddCardTypeFromHandToStable(ECardType Type, int32 PlayerIndex)
+{
+	TArray<AUnicornCardActor*> Cards = GetPlayerHand(PlayerIndex);
+	for (int32 i = 0; i < Cards.Num(); i++)
+	{
+		if (Cards[i]->GetCardInfo().CardType == Type)
+		{
+			RemoveFromPlayerHand(PlayerIndex, Cards[i]);
+			AddToPlayerStable(PlayerIndex, Cards[i]);
+			return;
+		}
+	}
+}
+
+void UUnicornCardGameManager::EndEffectTurn(int32 PlayerIndex, EEffectWord Effect, AUnicornCardActor* Card)
+{
+	OnCardEffectOptionalEnded.Broadcast();
 }
 
 void UUnicornCardGameManager::SetPhase(const ETurnPhase NewPhase)
@@ -318,6 +345,7 @@ void UUnicornCardGameManager::SetPhase(const ETurnPhase NewPhase)
 	{
 		GetWorld()->GetTimerManager().ClearTimer(DelayedPhaseChangeTimerHandle);
 	}
+	OnCardPhaseCompleted.RemoveDynamic(this, &UUnicornCardGameManager::DoPhaseLogicForFirstCard);
 	FTimerDelegate TimerDelegate;
 	TimerDelegate.BindUFunction(this, FName("DoPhaseChange"), NewPhase);
 	GetWorld()->GetTimerManager().SetTimer(DelayedPhaseChangeTimerHandle, TimerDelegate, 1.5f, false);
@@ -328,55 +356,90 @@ void UUnicornCardGameManager::DoPhaseChange(const ETurnPhase NewPhase)
 {	
 	CurrentTurnPhase = NewPhase;
 	OnPhaseChanged.Broadcast(NewPhase);
-	DoPhaseLogic();
+	//we have to trigger each card's phase and wait on a response to move onto next one
+	CopyOfStables.Empty();
+	for (int32 i = 1; i <= UUnicornSettings::GetUnicornSettings()->NumberOfPlayers; i++)
+	{
+		for (AUnicornCardActor* UnicornCard: PlayerBoards.Find(i)->StableUnicorns)
+		{
+			CopyOfStables.AddUnique(UnicornCard);
+		}
+		for (AUnicornCardActor* EffectCard: PlayerBoards.Find(i)->StableEffects)
+		{
+			CopyOfStables.AddUnique(EffectCard);
+		}
+	}	
+	
+	OnCardPhaseCompleted.AddUniqueDynamic(this, &UUnicornCardGameManager::DoPhaseLogicForFirstCard);
+	DoPhaseLogicForFirstCard();
 }
 
-void UUnicornCardGameManager::DoPhaseLogic()
+void UUnicornCardGameManager::DoPhaseLogicForFirstCard()
 {
+	if (CheckForWinCondition())
+	{
+		return;
+	}
+	if (CopyOfStables.Num() == 0)
+	{
+		OnCardPhaseCompleted.RemoveDynamic(this, &UUnicornCardGameManager::DoPhaseLogicForFirstCard);		
+		switch (CurrentTurnPhase)
+		{
+		case Beginning:
+			break;
+		case Draw:
+			GiveCardToPlayerFromDrawPile(CurrentPlayerIndex);
+			break;
+		case Action:
+			return;
+		case End:
+			break;
+		}
+		NextPhase();
+		return;
+	}
+	AUnicornCardActor* FirstCard = CopyOfStables[0];
+	CopyOfStables.RemoveAt(0);
 	switch (CurrentTurnPhase)
 	{
 	case Beginning:
-		for (AUnicornCardActor* Actor : CopyOfStables)
-		{
-			if (!Actor->OnBeginPhase())
-			{
-				return;
-			}
-		}
+		FirstCard->OnBeginPhase();
 		break;
 	case Draw:
-		for (AUnicornCardActor* Actor : CopyOfStables)
-		{
-			Actor->OnDrawPhase();
-		}
-		GiveCardToPlayerFromDrawPile(CurrentPlayerIndex);
+		FirstCard->OnDrawPhase();
 		break;
 	case Action:
-		for (AUnicornCardActor* Actor : CopyOfStables)
-		{
-			Actor->OnActionPhase();
-		}
+		FirstCard->OnActionPhase();
 		return;
 	case End:
-		for (AUnicornCardActor* Actor : CopyOfStables)
-		{
-			if (!Actor->OnEndPhase())
-			{
-				return;
-			}
-		}
+		FirstCard->OnEndPhase();
 		break;
 	}
-	NextPhase();
 }
 
-void UUnicornCardGameManager::OnEffectPlayed(int32 PlayerIndex, EEffectWord Effect, bool bOptional)
+bool UUnicornCardGameManager::CheckForWinCondition()
+{
+	for (int32 i = 1; i <= UUnicornSettings::GetUnicornSettings()->NumberOfPlayers; i++)
+	{
+		if (PlayerBoards.Find(i)->StableUnicorns.Num() >= 7)
+		{
+			//WIN
+			OnWinFinished.Broadcast(i);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UUnicornCardGameManager::InvokeEffect(const int32 PlayerIndex, const EEffectWord Effect, const bool bOptional)
 {
 	if (Effect == EEffectWord::None)
 	{
-		return;
+		return false;
 	}
+	//Maybe todo: check if we can do effect
 
-	OnEffectEventPlayed.Broadcast(Effect, PlayerIndex, bOptional);
+	OnEffectUIEventPlayed.Broadcast(Effect, PlayerIndex, bOptional);
+	return true;
 }
 

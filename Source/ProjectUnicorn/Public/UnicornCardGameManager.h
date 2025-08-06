@@ -30,6 +30,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnPlayerHandChanged, int32, Play
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnPlayerStableChanged, int32, PlayerIndex, AUnicornCardActor*, Card, bool, bRemoved);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerTurnChanged, int32, PlayerIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDiscardRequired, int32, PlayerIndex, bool, bOptionalDiscard);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCardPhaseCompleted);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCardEffectOptionalEnded);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWinFinished, int32, PlayerIndex);
 //this is for card to call
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnEffectCard, int32, PlayerIndex, EEffectWord, Effect, bool, bOptional);
@@ -49,6 +51,10 @@ public:
 	TArray<AUnicornCardActor*> GetNursery() const { return Nursery; }
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 	TArray<AUnicornCardActor*> GetPlayerHand(int32 PlayerIndex) const { return PlayerBoards[PlayerIndex].Hand; }
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	TArray<AUnicornCardActor*> GetPlayerStableUnicorns(int32 PlayerIndex) const { return PlayerBoards[PlayerIndex].StableUnicorns; }
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	TArray<AUnicornCardActor*> GetPlayerStableEffects(int32 PlayerIndex) const { return PlayerBoards[PlayerIndex].StableEffects; }
 	UFUNCTION(BlueprintCallable)
 	void AddToDrawPile(AUnicornCardActor* Card);
 	UFUNCTION(BlueprintCallable)
@@ -89,6 +95,10 @@ public:
 	bool IsCardPartOfPlayersStable(int32 PlayerIndex, AUnicornCardActor* Card);
 	UFUNCTION(BlueprintCallable)
 	void ExecuteCardEffect(EEffectWord Effect, int32 PlayerIndex, AUnicornCardActor* Card);
+	UFUNCTION(BlueprintCallable)
+	void AddCardTypeFromHandToStable(ECardType Type, int32 PlayerIndex);
+	UFUNCTION(BlueprintCallable)
+	void EndEffectTurn(int32 PlayerIndex, EEffectWord Effect, AUnicornCardActor* Card);
 
 	//events
 	UPROPERTY(BlueprintAssignable)
@@ -111,10 +121,20 @@ public:
 	FOnDiscardRequired OnDiscardRequired;
 	UPROPERTY(BlueprintAssignable)
 	FOnWinFinished OnWinFinished;
+
 	UPROPERTY(BlueprintAssignable, BlueprintCallable)
-	FOnEffectCard OnEffectCard;	
+	FOnEffectCard OnEffectCard; //to delete after replacing with function
+	UFUNCTION(BlueprintCallable)
+	bool InvokeEffect(int32 PlayerIndex, EEffectWord Effect, bool bOptional);
+	UPROPERTY(BlueprintAssignable, BlueprintCallable)
+	FOnCardPhaseCompleted OnCardPhaseCompleted;	
 	UPROPERTY(BlueprintAssignable)
-	FOnEffectPlayed OnEffectEventPlayed;
+	FOnEffectPlayed OnEffectUIEventPlayed;
+	UPROPERTY(BlueprintAssignable)
+	FOnEffectPlayed OnEffectEventExecuted;
+	UPROPERTY(BlueprintAssignable)
+	FOnCardEffectOptionalEnded OnCardEffectOptionalEnded;
+	
 	
 protected:
 	UPROPERTY()
@@ -133,10 +153,11 @@ protected:
 
 
 	void ManualShuffle(TArray<AUnicornCardActor*>& Array, FRandomStream& Stream);
-	void DoPhaseLogic();
-
 	UFUNCTION()
-	void OnEffectPlayed(int32 PlayerIndex, EEffectWord Effect, bool bOptional);
+	void DoPhaseLogicForFirstCard();
+
+	bool CheckForWinCondition();
+
 	UFUNCTION()
 	void DoPhaseChange(const ETurnPhase NewPhase);
 	
