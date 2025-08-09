@@ -10,9 +10,14 @@ AUnicornCardActor::AUnicornCardActor()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
+bool AUnicornCardActor::CanPlayEffects_Implementation()
+{
+	return bCanPlayEffects;
+}
+
 bool AUnicornCardActor::CanEnterStable_Implementation()
 {
-	return true;
+	return bCanEnterStable;
 }
 
 void AUnicornCardActor::OnPlayedCard_Implementation()

@@ -33,8 +33,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDiscardRequired, int32, PlayerIn
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCardPhaseCompleted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCardEffectOptionalEnded);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWinFinished, int32, PlayerIndex);
-//this is for card to call
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnEffectCard, int32, PlayerIndex, EEffectWord, Effect, bool, bOptional);
 //this is for UI to listen to
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnEffectPlayed, EEffectWord, Effect, int32, PlayerIndex, bool, bOptional);
 UCLASS(BlueprintType)
@@ -99,6 +97,8 @@ public:
 	void AddCardTypeFromHandToStable(ECardType Type, int32 PlayerIndex);
 	UFUNCTION(BlueprintCallable)
 	void EndEffectTurn(int32 PlayerIndex, EEffectWord Effect, AUnicornCardActor* Card);
+	UFUNCTION(BlueprintCallable)
+	void ExecutePlayCard(AUnicornCardActor* Card);
 
 	//events
 	UPROPERTY(BlueprintAssignable)
@@ -122,8 +122,6 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnWinFinished OnWinFinished;
 
-	UPROPERTY(BlueprintAssignable, BlueprintCallable)
-	FOnEffectCard OnEffectCard; //to delete after replacing with function
 	UFUNCTION(BlueprintCallable)
 	bool InvokeEffect(int32 PlayerIndex, EEffectWord Effect, bool bOptional);
 	UPROPERTY(BlueprintAssignable, BlueprintCallable)
@@ -150,9 +148,10 @@ protected:
 
 	TEnumAsByte<ETurnPhase> CurrentTurnPhase;
 	int32 CurrentPlayerIndex = 1;
+	TTuple<bool, EEffectWord> CurrentEffect;
 
 
-	void ManualShuffle(TArray<AUnicornCardActor*>& Array, FRandomStream& Stream);
+	void ManualShuffle(TArray<AUnicornCardActor*>& Array);
 	UFUNCTION()
 	void DoPhaseLogicForFirstCard();
 

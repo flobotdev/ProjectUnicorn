@@ -79,22 +79,3 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FLinearColor ImageTint = FLinearColor::White;
 };
-
-UCLASS(BlueprintType)
-class PROJECTUNICORN_API UUnicornCard : public UDataAsset
-{
-	GENERATED_BODY()
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TEnumAsByte<ECardType> CardType = ECardType::Instant;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FText CardTitle;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FText CardDescription;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSoftObjectPtr<UTexture2D> CardImage = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FLinearColor ImageTint = FLinearColor::White;
-};
-
-

@@ -41,6 +41,12 @@ public:
 	void OnPlayedCard();
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	bool CanEnterStable();
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	bool CanPlayEffects();
+	UFUNCTION(BlueprintCallable)
+	void SetCanEnterStable(const bool bCanEnter){ bCanEnterStable = bCanEnter; }
+	UFUNCTION(BlueprintCallable)
+	void SetCanPlayEffects(const bool bCanPlay){ bCanPlayEffects = bCanPlay; }
 
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
@@ -55,7 +61,10 @@ protected:
 	bool bCanBeSacrificed = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Unicorn, meta = (AllowPrivateAccess = "true"))
 	bool bCanBeAffectedByMagic = true;
-	
+	UPROPERTY()
+	bool bCanEnterStable = true;
+	UPROPERTY()
+	bool bCanPlayEffects = true;
 	UPROPERTY(BlueprintReadOnly, Category = Manager, meta = (AllowPrivateAccess = "true"))
 	UUnicornCardGameManager* CardManager = nullptr;
 	UPROPERTY(BlueprintReadOnly, Category = Manager, meta = (AllowPrivateAccess = "true"))

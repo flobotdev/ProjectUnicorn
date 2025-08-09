@@ -82,7 +82,11 @@ void UUnicornCardGameManager::AddToPlayerStable(int32 PlayerIndex, AUnicornCardA
 	{
 		PlayerBoards.Find(PlayerIndex)->StableEffects.Add(Card);
 	}
-	CopyOfStables.AddUnique(Card);
+	//adding only if we are currently processing the stable cards
+	if (CopyOfStables.Num() > 0)
+	{
+		CopyOfStables.AddUnique(Card);
+	}
 	OnPlayerStableChanged.Broadcast(PlayerIndex, Card, false);
 	Card->OnEnterStable();
 }
@@ -118,6 +122,15 @@ void UUnicornCardGameManager::MoveToPlayerStable(int32 PlayerIndex, AUnicornCard
 
 void UUnicornCardGameManager::NextPhase()
 {
+	//if we have stuff to process we should continue with that
+	if (CopyOfStables.Num() > 0)
+	{
+		return;
+	}
+	if (CurrentEffect.Value > EEffectWord::None)
+	{
+		return;
+	}
 	switch (CurrentTurnPhase)
 	{
 	case Beginning:
@@ -198,9 +211,8 @@ void UUnicornCardGameManager::InitManager()
 		{
 			return;
 		}
-		FRandomStream RandomStream(0);
-		PinnedVariablesOutliner->ManualShuffle(PinnedVariablesOutliner->DrawPile, RandomStream);
-		PinnedVariablesOutliner->ManualShuffle(PinnedVariablesOutliner->Nursery, RandomStream);
+		PinnedVariablesOutliner->ManualShuffle(PinnedVariablesOutliner->DrawPile);
+		PinnedVariablesOutliner->ManualShuffle(PinnedVariablesOutliner->Nursery);
 		//init player boards
 		for (int32 i = 1; i <= UUnicornSettings::GetUnicornSettings()->NumberOfPlayers; i++)
 		{
@@ -221,11 +233,11 @@ void UUnicornCardGameManager::InitManager()
 	}));
 }
 
-void UUnicornCardGameManager::ManualShuffle(TArray<AUnicornCardActor*>& Array, FRandomStream& Stream)
+void UUnicornCardGameManager::ManualShuffle(TArray<AUnicornCardActor*>& Array)
 {
 	for (int32 i = Array.Num() - 1; i > 0; --i)
 	{
-		int32 Index = Stream.RandRange(0, i);
+		const int32 Index = FMath::RandRange(0, i);
 		if (i != Index)
 		{
 			Array.Swap(i, Index);
@@ -247,10 +259,8 @@ void UUnicornCardGameManager::GiveCardToPlayerFromDrawPile(int32 PlayerIndex)
 			//not a fan. rethink
 			AddToDrawPile(DiscardPile[i]);
 			RemoveFromDiscardPile(DiscardPile[i]);
-			//Redo the random stream in a diff way. It's giving same results each time.
-			FRandomStream RandomStream(6);
-			ManualShuffle(DrawPile, RandomStream);
 		}
+		ManualShuffle(DrawPile);
 	}
 	AUnicornCardActor* LastCard = DrawPile.Last();
 	if (LastCard != nullptr)
@@ -311,6 +321,8 @@ void UUnicornCardGameManager::ExecuteCardEffect(EEffectWord Effect, int32 Player
 		AddToPlayerHand(PlayerIndex, Card);
 		break;
 	}
+	CurrentEffect.Key = false;
+	CurrentEffect.Value = EEffectWord::None;
 	OnEffectEventExecuted.Broadcast(Effect, PlayerIndex, true);
 }
 
@@ -329,8 +341,50 @@ void UUnicornCardGameManager::AddCardTypeFromHandToStable(ECardType Type, int32 
 }
 
 void UUnicornCardGameManager::EndEffectTurn(int32 PlayerIndex, EEffectWord Effect, AUnicornCardActor* Card)
-{
+{	
+	CurrentEffect.Key = false;
+	CurrentEffect.Value = EEffectWord::None;
 	OnCardEffectOptionalEnded.Broadcast();
+}
+
+void UUnicornCardGameManager::ExecutePlayCard(AUnicornCardActor* Card)
+{
+	TArray<int32> Players;
+	PlayerBoards.GetKeys(Players);
+	//TODO:: Add a way to choose opponent for downgrade
+	int32 TargetPlayer = -1;
+	for (int32 i = 0; i < Players.Num(); i++)
+	{
+		if (Players[i] != CurrentPlayerIndex)
+		{
+			TargetPlayer = Players[i];
+			break;
+		}
+	}
+	switch (Card->GetCardInfo().CardType)
+	{
+	case Instant:
+		break;
+	case Upgrade:
+	case MagicalUnicorn:
+	case BasicUnicorn:
+	case BabyUnicorn:
+		RemoveFromPlayerHand(CurrentPlayerIndex, Card);
+		AddToPlayerStable(CurrentPlayerIndex, Card);
+		break;
+	case Downgrade:
+		RemoveFromPlayerHand(CurrentPlayerIndex, Card);		
+		if (TargetPlayer != CurrentPlayerIndex && TargetPlayer != -1)
+		{
+			AddToPlayerStable(TargetPlayer, Card);
+		}
+		break;
+	case Magic:
+		Card->OnPlayedCard();
+		RemoveFromPlayerHand(CurrentPlayerIndex, Card);
+		break;
+	}
+	
 }
 
 void UUnicornCardGameManager::SetPhase(const ETurnPhase NewPhase)
@@ -437,6 +491,9 @@ bool UUnicornCardGameManager::InvokeEffect(const int32 PlayerIndex, const EEffec
 	{
 		return false;
 	}
+
+	CurrentEffect.Key = bOptional;
+	CurrentEffect.Value = Effect;
 	//Maybe todo: check if we can do effect
 
 	OnEffectUIEventPlayed.Broadcast(Effect, PlayerIndex, bOptional);
