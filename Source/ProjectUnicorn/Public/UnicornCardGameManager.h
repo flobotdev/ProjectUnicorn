@@ -50,9 +50,23 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 	TArray<AUnicornCardActor*> GetPlayerHand(int32 PlayerIndex) const { return PlayerBoards[PlayerIndex].Hand; }
 	UFUNCTION(BlueprintCallable, BlueprintPure)
-	TArray<AUnicornCardActor*> GetPlayerStableUnicorns(int32 PlayerIndex) const { return PlayerBoards[PlayerIndex].StableUnicorns; }
+	TArray<AUnicornCardActor*> GetPlayerStableUnicorns(int32 PlayerIndex) const
+	{
+		if (!PlayerBoards.Contains(PlayerIndex))
+		{
+			return TArray<AUnicornCardActor*>();
+		}
+		return PlayerBoards[PlayerIndex].StableUnicorns;
+	}
 	UFUNCTION(BlueprintCallable, BlueprintPure)
-	TArray<AUnicornCardActor*> GetPlayerStableEffects(int32 PlayerIndex) const { return PlayerBoards[PlayerIndex].StableEffects; }
+	TArray<AUnicornCardActor*> GetPlayerStableEffects(int32 PlayerIndex) const
+	{
+		if (!PlayerBoards.Contains(PlayerIndex))
+		{
+			return TArray<AUnicornCardActor*>();
+		}
+		return PlayerBoards[PlayerIndex].StableEffects;
+	}
 	UFUNCTION(BlueprintCallable)
 	void AddToDrawPile(AUnicornCardActor* Card);
 	UFUNCTION(BlueprintCallable)
