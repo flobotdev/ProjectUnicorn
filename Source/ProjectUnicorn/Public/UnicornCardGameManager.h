@@ -138,6 +138,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	bool InvokeEffect(int32 PlayerIndex, EEffectWord Effect, bool bOptional);
+	UFUNCTION(BlueprintCallable)
+	bool CanInvokeEffect(int32 PlayerIndex, EEffectWord Effect);
 	UPROPERTY(BlueprintAssignable, BlueprintCallable)
 	FOnCardPhaseCompleted OnCardPhaseCompleted;	
 	UPROPERTY(BlueprintAssignable)

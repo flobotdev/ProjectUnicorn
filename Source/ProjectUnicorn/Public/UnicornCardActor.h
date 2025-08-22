@@ -42,25 +42,29 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	bool CanEnterStable();
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	bool CanPlayCard();
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	bool CanPlayEffects();
 	UFUNCTION(BlueprintCallable)
 	void SetCanEnterStable(const bool bCanEnter){ bCanEnterStable = bCanEnter; }
 	UFUNCTION(BlueprintCallable)
 	void SetCanPlayEffects(const bool bCanPlay){ bCanPlayEffects = bCanPlay; }
+	UFUNCTION(BlueprintCallable)
+	bool CanEffectBePlayedOnSelf(const EEffectWord Effect);
 
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 	FUnicornCardInfo GetCardInfo() { return CardInfo; }
-
-protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Unicorn, meta = (AllowPrivateAccess = "true"))
-	FUnicornCardInfo CardInfo;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Unicorn, meta = (AllowPrivateAccess = "true"))
 	bool bCanBeDestroyed = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Unicorn, meta = (AllowPrivateAccess = "true"))
 	bool bCanBeSacrificed = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Unicorn, meta = (AllowPrivateAccess = "true"))
 	bool bCanBeAffectedByMagic = true;
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Unicorn, meta = (AllowPrivateAccess = "true"))
+	FUnicornCardInfo CardInfo;
 	UPROPERTY()
 	bool bCanEnterStable = true;
 	UPROPERTY()

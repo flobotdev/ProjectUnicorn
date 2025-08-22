@@ -491,12 +491,43 @@ bool UUnicornCardGameManager::InvokeEffect(const int32 PlayerIndex, const EEffec
 	{
 		return false;
 	}
-
+	if (!CanInvokeEffect(PlayerIndex, Effect))
+	{
+		return false;
+	}
 	CurrentEffect.Key = bOptional;
 	CurrentEffect.Value = Effect;
-	//Maybe todo: check if we can do effect
 
 	OnEffectUIEventPlayed.Broadcast(Effect, PlayerIndex, bOptional);
+	return true;
+}
+
+bool UUnicornCardGameManager::CanInvokeEffect(int32 PlayerIndex, EEffectWord Effect)
+{	
+	bool bCanContinue = false;
+	//needs more fleshing out
+	TArray<AUnicornCardActor*> AllUnicorns = GetPlayerStableUnicorns(PlayerIndex);
+	for (AUnicornCardActor* Unicorn : AllUnicorns)
+	{
+		if (Unicorn->CanEffectBePlayedOnSelf(Effect))
+		{				
+			bCanContinue = true;
+			break;
+		}
+	}
+	TArray<AUnicornCardActor*> AllEffects = GetPlayerStableEffects(PlayerIndex);
+	for (AUnicornCardActor* EffectCard : AllEffects)
+	{
+		if (EffectCard->CanEffectBePlayedOnSelf(Effect))
+		{				
+			bCanContinue = true;
+			break;
+		}
+	}
+	if (!bCanContinue)
+	{
+		return false;
+	}
 	return true;
 }
 

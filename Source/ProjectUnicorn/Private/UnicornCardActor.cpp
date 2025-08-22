@@ -10,6 +10,33 @@ AUnicornCardActor::AUnicornCardActor()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
+bool AUnicornCardActor::CanPlayCard_Implementation()
+{
+	if (!CardManager)
+	{
+		return false;
+	}
+	return CardManager->CanInvokeEffect(CurrentOwningPlayer, CardInfo.Effect);
+}
+
+bool AUnicornCardActor::CanEffectBePlayedOnSelf(const EEffectWord Effect)
+{
+	switch (Effect)
+	{
+		case Sacrifice:
+			return bCanBeSacrificed;
+		case EEffectWord::Destroy:
+			return bCanBeDestroyed;
+		case Steal:
+		case Discard:
+		case Revert:
+			return bCanBeAffectedByMagic;
+		case None:
+			break;
+	}
+	return true;
+}
+
 bool AUnicornCardActor::CanPlayEffects_Implementation()
 {
 	return bCanPlayEffects;

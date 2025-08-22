@@ -75,6 +75,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText CardDescription;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TEnumAsByte<EEffectWord> Effect = EEffectWord::None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UTexture2D> CardImage = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FLinearColor ImageTint = FLinearColor::White;
